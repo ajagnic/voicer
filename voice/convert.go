@@ -19,19 +19,19 @@ var voice ttsapi.SsmlVoiceGender
 var language string
 
 //Authenticate creates an internal client, authenticated with the given JSON credentials file or by environment variable (GOOGLE_APPLICATION_CREDENTIALS).
-func Authenticate(credentialsFile string) {
+func Authenticate(credentialsFilepath string) {
 	ctx = context.Background()
-	c, err := tts.NewClient(ctx, option.WithCredentialsFile(credentialsFile))
+	c, err := tts.NewClient(ctx, option.WithCredentialsFile(credentialsFilepath))
 	//Exit if client could not be created with supplied credentials.
 	if err != nil {
 		log.Fatalf("voice:Initialize() %v", err)
 	}
 	client = c
-	SetSynthOptions("en-US", "N", "mp3")
+	SetSynthOptions("mp3", "N", "en-US")
 }
 
 //Synthesize synchronously converts text to audio and saves to file. May modify filename extension to match audio encoding.
-func Synthesize(text, filename string) (outputFile string, err error) {
+func Synthesize(text, filename string) (outFilename string, err error) {
 	timeout, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	request := createRequest(text)
@@ -39,16 +39,16 @@ func Synthesize(text, filename string) (outputFile string, err error) {
 	if err != nil {
 		log.Printf("voice:Synthesize() %v", err)
 	} else {
-		outputFile, err = saveAudioToFile(filename, response.AudioContent)
+		outFilename, err = saveAudioToFile(response.AudioContent, filename)
 	}
 	return
 }
 
-//SetSynthOptions sets options used for converting text to audio, such as language(en-US), gender(M/F/N) and encoding(mp3/wav/ogg).
-func SetSynthOptions(languageCode, voiceGender, audioEncoding string) {
-	language = languageCode
-	setVoice(voiceGender)
+//SetSynthOptions sets options used for converting text to audio, such as encoding(mp3/wav/ogg), gender(M/F/N) and language(en-US).
+func SetSynthOptions(audioEncoding, voiceGender, languageCode string) {
 	setEncoding(audioEncoding)
+	setVoice(voiceGender)
+	language = languageCode
 }
 
 func createRequest(text string) (req ttsapi.SynthesizeSpeechRequest) {
@@ -91,7 +91,7 @@ func setVoice(gender string) {
 	}
 }
 
-func saveAudioToFile(filename string, audio []byte) (file string, err error) {
+func saveAudioToFile(audio []byte, filename string) (file string, err error) {
 	file = formatAudioFilename(filename)
 	err = ioutil.WriteFile(file, audio, 0644)
 	if err != nil {

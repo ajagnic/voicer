@@ -23,14 +23,14 @@ func TestClient(t *testing.T) {
 }
 
 func testSetSynthOptions(t *testing.T) {
-	lang := "en-GB"
-	vce := "Female"
 	enc := "wav"
-	SetSynthOptions(lang, vce, enc)
+	vce := "Female"
+	lang := "en-GB"
+	SetSynthOptions(enc, vce, lang)
 	if language != lang || voice != ttsapi.SsmlVoiceGender_FEMALE || encoding != ttsapi.AudioEncoding_LINEAR16 {
 		t.Errorf("SetSynthOptions value mismatch. %v, %v, %v", language, voice, encoding)
 	}
-	SetSynthOptions("en-US", "N", "mp3")
+	SetSynthOptions("mp3", "N", "en-US")
 }
 
 func testSynthesize(t *testing.T) {
