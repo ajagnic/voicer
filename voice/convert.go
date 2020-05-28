@@ -51,6 +51,15 @@ func SetSynthOptions(audioEncoding, voiceGender, languageCode string) {
 	language = languageCode
 }
 
+//Stop closes the client connection to the API service.
+func Stop() (err error) {
+	err = client.Close()
+	if err != nil {
+		log.Printf("voice:Stop() %v", err)
+	}
+	return
+}
+
 func createRequest(text string) (req ttsapi.SynthesizeSpeechRequest) {
 	req = ttsapi.SynthesizeSpeechRequest{
 		Input: &ttsapi.SynthesisInput{

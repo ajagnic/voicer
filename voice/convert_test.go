@@ -8,10 +8,10 @@ import (
 	ttsapi "google.golang.org/genproto/googleapis/cloud/texttospeech/v1"
 )
 
-var keyFile = flag.String("key", "", "Filepath of GCP credentials file.")
+var key = flag.String("key", "", "Filepath of GCP Service-Account key")
 
 func TestClient(t *testing.T) {
-	Authenticate(*keyFile)
+	Authenticate(*key)
 	if client == nil {
 		t.Errorf("Authenticate failed to create client. client=%v", client)
 	} else {
