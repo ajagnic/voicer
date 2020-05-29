@@ -34,10 +34,9 @@ func testSetSynthOptions(t *testing.T) {
 }
 
 func testSynthesize(t *testing.T) {
-	msg := "testing"
 	filename := "output.wav"
 	correctFilename := "output.mp3"
-	outputFile, err := Synthesize(msg, filename)
+	outputFile, err := Synthesize("testing", filename)
 	if err != nil {
 		t.Errorf("Synthesize returned error. %v", err)
 	}

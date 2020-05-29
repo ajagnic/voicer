@@ -89,8 +89,8 @@ func setEncoding(audioEncoding string) {
 }
 
 func setVoice(gender string) {
-	vce := strings.ToUpper(gender)[0]
-	switch string(vce) {
+	vce := strings.ToUpper(gender)[:1]
+	switch vce {
 	case "M":
 		voice = ttsapi.SsmlVoiceGender_MALE
 	case "F":
