@@ -12,104 +12,99 @@ import (
 	ttsapi "google.golang.org/genproto/googleapis/cloud/texttospeech/v1"
 )
 
-var ctx context.Context
-var client *tts.Client
-var encoding ttsapi.AudioEncoding
-var voice ttsapi.SsmlVoiceGender
-var language string
+type voiceClient struct {
+	*tts.Client
+	encoding ttsapi.AudioEncoding
+	voice    ttsapi.SsmlVoiceGender
+	language string
+}
 
-//Authenticate creates an internal client, authenticated with the given JSON credentials file or by environment variable (GOOGLE_APPLICATION_CREDENTIALS).
-func Authenticate(credentialsFilepath string) {
-	ctx = context.Background()
-	c, err := tts.NewClient(ctx, option.WithCredentialsFile(credentialsFilepath))
-	//Exit if client could not be created with supplied credentials.
+//Authenticate returns a client, authenticated with the given JSON credentials file or by environment variable (GOOGLE_APPLICATION_CREDENTIALS).
+func Authenticate(filepath string) (*voiceClient, error) {
+	ttsClient, err := tts.NewClient(context.Background(), option.WithCredentialsFile(filepath))
 	if err != nil {
-		log.Fatalf("voice:Initialize() %v", err)
+		log.Printf("voice:Authenticate() %v", err)
 	}
-	client = c
-	SetSynthOptions("mp3", "N", "en-US")
+	client := &voiceClient{
+		ttsClient,
+		ttsapi.AudioEncoding_MP3,
+		ttsapi.SsmlVoiceGender_NEUTRAL,
+		"en-US",
+	}
+	return client, err
 }
 
 //Synthesize synchronously converts text to audio and saves to file. May modify filename extension to match audio encoding.
-func Synthesize(text, filename string) (outFilename string, err error) {
-	timeout, cancel := context.WithTimeout(ctx, 10*time.Second)
+func (c *voiceClient) Synthesize(text, filename string) (outfile string, err error) {
+	timeout, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	request := createRequest(text)
-	response, err := client.SynthesizeSpeech(timeout, &request)
+	request := createRequest(c, text)
+	response, err := c.SynthesizeSpeech(timeout, request)
 	if err != nil {
 		log.Printf("voice:Synthesize() %v", err)
 	} else {
-		outFilename, err = saveAudioToFile(response.AudioContent, filename)
+		outfile, err = saveAudioToFile(response.AudioContent, filename, c.encoding)
 	}
 	return
 }
 
 //SetSynthOptions sets options used for converting text to audio, such as encoding(mp3/wav/ogg), gender(M/F/N) and language(en-US).
-func SetSynthOptions(audioEncoding, voiceGender, languageCode string) {
-	setEncoding(audioEncoding)
-	setVoice(voiceGender)
-	language = languageCode
+func (c *voiceClient) SetSynthOptions(audioEncoding, voiceGender, languageCode string) {
+	setEncoding(c, audioEncoding)
+	setVoice(c, voiceGender)
+	c.language = languageCode
 }
 
-//Stop closes the client connection to the API service.
-func Stop() (err error) {
-	err = client.Close()
-	if err != nil {
-		log.Printf("voice:Stop() %v", err)
-	}
-	return
-}
-
-func createRequest(text string) (req ttsapi.SynthesizeSpeechRequest) {
-	req = ttsapi.SynthesizeSpeechRequest{
+func createRequest(c *voiceClient, text string) *ttsapi.SynthesizeSpeechRequest {
+	return &ttsapi.SynthesizeSpeechRequest{
 		Input: &ttsapi.SynthesisInput{
 			InputSource: &ttsapi.SynthesisInput_Text{Text: text},
 		},
 		Voice: &ttsapi.VoiceSelectionParams{
-			LanguageCode: language,
-			SsmlGender:   voice,
+			LanguageCode: c.language,
+			SsmlGender:   c.voice,
 		},
 		AudioConfig: &ttsapi.AudioConfig{
-			AudioEncoding: encoding,
+			AudioEncoding: c.encoding,
 		},
 	}
-	return
 }
 
-func setEncoding(audioEncoding string) {
+func setEncoding(c *voiceClient, audioEncoding string) {
 	enc := strings.ToUpper(audioEncoding)
 	switch enc {
 	case "OGG":
-		encoding = ttsapi.AudioEncoding_OGG_OPUS
+		c.encoding = ttsapi.AudioEncoding_OGG_OPUS
 	case "WAV":
-		encoding = ttsapi.AudioEncoding_LINEAR16
+		c.encoding = ttsapi.AudioEncoding_LINEAR16
 	default:
-		encoding = ttsapi.AudioEncoding_MP3
+		c.encoding = ttsapi.AudioEncoding_MP3
 	}
 }
 
-func setVoice(gender string) {
+func setVoice(c *voiceClient, gender string) {
 	vce := strings.ToUpper(gender)[:1]
 	switch vce {
 	case "M":
-		voice = ttsapi.SsmlVoiceGender_MALE
+		c.voice = ttsapi.SsmlVoiceGender_MALE
 	case "F":
-		voice = ttsapi.SsmlVoiceGender_FEMALE
+		c.voice = ttsapi.SsmlVoiceGender_FEMALE
 	default:
-		voice = ttsapi.SsmlVoiceGender_NEUTRAL
+		c.voice = ttsapi.SsmlVoiceGender_NEUTRAL
 	}
 }
 
-func saveAudioToFile(audio []byte, filename string) (file string, err error) {
-	file = formatAudioFilename(filename)
-	err = ioutil.WriteFile(file, audio, 0644)
+func saveAudioToFile(audio []byte, filename string, encoding ttsapi.AudioEncoding) (string, error) {
+	file := formatAudioFilename(filename, encoding)
+	err := ioutil.WriteFile(file, audio, 0644)
 	if err != nil {
 		log.Printf("voice:saveAudioToFile() %v", err)
 	}
-	return
+	return file, err
 }
 
-func formatAudioFilename(filename string) (formattedName string) {
+func formatAudioFilename(filename string, encoding ttsapi.AudioEncoding) string {
+	fmtname := filename
 	var expectedExt string
 	switch encoding {
 	case ttsapi.AudioEncoding_OGG_OPUS:
@@ -122,12 +117,10 @@ func formatAudioFilename(filename string) (formattedName string) {
 	if extIndex := strings.Index(filename, "."); extIndex != -1 {
 		fileExt := filename[extIndex:]
 		if fileExt != expectedExt {
-			formattedName = filename[:extIndex] + expectedExt
-		} else {
-			formattedName = filename
+			fmtname = filename[:extIndex] + expectedExt
 		}
 	} else {
-		formattedName = filename + expectedExt
+		fmtname = filename + expectedExt
 	}
-	return
+	return fmtname
 }
