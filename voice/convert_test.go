@@ -15,12 +15,13 @@ var key = flag.String("key", "", "Filepath of GCP Service-Account key")
 
 func TestAuthenticate(t *testing.T) {
 	client, err := Authenticate(*key)
-	if err != nil {
+	if client.Client == nil || err != nil {
 		t.Errorf("Authenticate failed to create client. client=%v, err=%v", client, err)
-	}
-	err = client.Close()
-	if err != nil {
-		t.Errorf("Error closing the client. %v", err)
+	} else {
+		err = client.Close()
+		if err != nil {
+			t.Errorf("Error closing the client. %v", err)
+		}
 	}
 }
 

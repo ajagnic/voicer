@@ -50,9 +50,33 @@ func (c *voiceClient) Synthesize(text, filename string) (outfile string, err err
 
 //SetSynthOptions sets options used for converting text to audio, such as encoding(mp3/wav/ogg), gender(M/F/N) and language(en-US).
 func (c *voiceClient) SetSynthOptions(audioEncoding, voiceGender, languageCode string) {
-	setEncoding(c, audioEncoding)
-	setVoice(c, voiceGender)
+	c.setEncoding(audioEncoding)
+	c.setVoice(voiceGender)
 	c.language = languageCode
+}
+
+func (c *voiceClient) setEncoding(audioEncoding string) {
+	enc := strings.ToUpper(audioEncoding)
+	switch enc {
+	case "OGG":
+		c.encoding = ttsapi.AudioEncoding_OGG_OPUS
+	case "WAV":
+		c.encoding = ttsapi.AudioEncoding_LINEAR16
+	default:
+		c.encoding = ttsapi.AudioEncoding_MP3
+	}
+}
+
+func (c *voiceClient) setVoice(gender string) {
+	vce := strings.ToUpper(gender)[:1]
+	switch vce {
+	case "M":
+		c.voice = ttsapi.SsmlVoiceGender_MALE
+	case "F":
+		c.voice = ttsapi.SsmlVoiceGender_FEMALE
+	default:
+		c.voice = ttsapi.SsmlVoiceGender_NEUTRAL
+	}
 }
 
 func createRequest(c *voiceClient, text string) *ttsapi.SynthesizeSpeechRequest {
@@ -67,30 +91,6 @@ func createRequest(c *voiceClient, text string) *ttsapi.SynthesizeSpeechRequest 
 		AudioConfig: &ttsapi.AudioConfig{
 			AudioEncoding: c.encoding,
 		},
-	}
-}
-
-func setEncoding(c *voiceClient, audioEncoding string) {
-	enc := strings.ToUpper(audioEncoding)
-	switch enc {
-	case "OGG":
-		c.encoding = ttsapi.AudioEncoding_OGG_OPUS
-	case "WAV":
-		c.encoding = ttsapi.AudioEncoding_LINEAR16
-	default:
-		c.encoding = ttsapi.AudioEncoding_MP3
-	}
-}
-
-func setVoice(c *voiceClient, gender string) {
-	vce := strings.ToUpper(gender)[:1]
-	switch vce {
-	case "M":
-		c.voice = ttsapi.SsmlVoiceGender_MALE
-	case "F":
-		c.voice = ttsapi.SsmlVoiceGender_FEMALE
-	default:
-		c.voice = ttsapi.SsmlVoiceGender_NEUTRAL
 	}
 }
 
