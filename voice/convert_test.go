@@ -30,7 +30,7 @@ func TestSynthesize(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error creating a client. %v", err)
 	}
-	client := &voiceClient{
+	client := &VoiceClient{
 		ttsClient,
 		ttsapi.AudioEncoding_MP3,
 		ttsapi.SsmlVoiceGender_NEUTRAL,
@@ -60,7 +60,7 @@ func TestSetSynthOptions(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error creating a client. %v", err)
 	}
-	client := &voiceClient{
+	client := &VoiceClient{
 		ttsClient,
 		ttsapi.AudioEncoding_MP3,
 		ttsapi.SsmlVoiceGender_NEUTRAL,

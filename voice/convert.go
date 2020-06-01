@@ -12,7 +12,7 @@ import (
 	ttsapi "google.golang.org/genproto/googleapis/cloud/texttospeech/v1"
 )
 
-type voiceClient struct {
+type VoiceClient struct {
 	*tts.Client
 	encoding ttsapi.AudioEncoding
 	voice    ttsapi.SsmlVoiceGender
@@ -20,12 +20,12 @@ type voiceClient struct {
 }
 
 //Authenticate returns a client, authenticated with the given JSON credentials file or by environment variable (GOOGLE_APPLICATION_CREDENTIALS).
-func Authenticate(filepath string) (*voiceClient, error) {
+func Authenticate(filepath string) (*VoiceClient, error) {
 	ttsClient, err := tts.NewClient(context.Background(), option.WithCredentialsFile(filepath))
 	if err != nil {
 		log.Printf("voice:Authenticate() %v", err)
 	}
-	client := &voiceClient{
+	client := &VoiceClient{
 		ttsClient,
 		ttsapi.AudioEncoding_MP3,
 		ttsapi.SsmlVoiceGender_NEUTRAL,
@@ -35,7 +35,7 @@ func Authenticate(filepath string) (*voiceClient, error) {
 }
 
 //Synthesize synchronously converts text to audio and saves to file. May modify filename extension to match audio encoding.
-func (c *voiceClient) Synthesize(text, filename string) (outfile string, err error) {
+func (c *VoiceClient) Synthesize(text, filename string) (outfile string, err error) {
 	timeout, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	request := createRequest(c, text)
@@ -49,13 +49,13 @@ func (c *voiceClient) Synthesize(text, filename string) (outfile string, err err
 }
 
 //SetSynthOptions sets options used for converting text to audio, such as encoding(mp3/wav/ogg), gender(M/F/N) and language(en-US).
-func (c *voiceClient) SetSynthOptions(audioEncoding, voiceGender, languageCode string) {
+func (c *VoiceClient) SetSynthOptions(audioEncoding, voiceGender, languageCode string) {
 	c.setEncoding(audioEncoding)
 	c.setVoice(voiceGender)
 	c.language = languageCode
 }
 
-func (c *voiceClient) setEncoding(audioEncoding string) {
+func (c *VoiceClient) setEncoding(audioEncoding string) {
 	enc := strings.ToUpper(audioEncoding)
 	switch enc {
 	case "OGG":
@@ -67,7 +67,7 @@ func (c *voiceClient) setEncoding(audioEncoding string) {
 	}
 }
 
-func (c *voiceClient) setVoice(gender string) {
+func (c *VoiceClient) setVoice(gender string) {
 	vce := strings.ToUpper(gender)[:1]
 	switch vce {
 	case "M":
@@ -79,7 +79,7 @@ func (c *voiceClient) setVoice(gender string) {
 	}
 }
 
-func createRequest(c *voiceClient, text string) *ttsapi.SynthesizeSpeechRequest {
+func createRequest(c *VoiceClient, text string) *ttsapi.SynthesizeSpeechRequest {
 	return &ttsapi.SynthesizeSpeechRequest{
 		Input: &ttsapi.SynthesisInput{
 			InputSource: &ttsapi.SynthesisInput_Text{Text: text},
