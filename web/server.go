@@ -7,23 +7,40 @@ import (
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/ajagnic/voicer/voice"
 )
 
-func Serve(addr string) error {
+type webClient struct {
+	*voice.VoiceClient
+	filename string
+}
+
+func AuthenticateServer(key string) (*webClient, error) {
+	voiceClient, err := voice.Authenticate(key)
+	if err != nil {
+		log.Printf("web:AuthenticateServer() %v", err)
+	}
+	client := &webClient{
+		voiceClient,
+		"output",
+	}
+	return client, err
+}
+
+func (c *webClient) Serve(addr string) error {
 	router := http.NewServeMux()
 	server := createServer(addr, router)
 	interrupt := shutdownListener()
 
 	router.HandleFunc("/", indexHandler)
+	router.HandleFunc("/media/", mediaHandler)
+	router.HandleFunc("/post", c.postHandler)
 
 	go listen(server)
 	<-interrupt
 	err := shutdown(server)
 	return err
-}
-
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello, world."))
 }
 
 func listen(srv *http.Server) {
