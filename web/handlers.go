@@ -2,27 +2,16 @@ package web
 
 import (
 	"net/http"
-	"text/template"
 )
 
-func indexHandler(w http.ResponseWriter, r *http.Request) {
-	index := indexPage()
-	tmpl := template.Must(template.New("layout").Parse(htmlLayout()))
+func (c *webClient) indexHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
-		tmpl.Execute(w, index)
-	} else {
-		http.Error(w, "Invalid method.", http.StatusMethodNotAllowed)
-	}
-}
-
-func (s *webClient) postHandler(w http.ResponseWriter, r *http.Request) {
-	index := indexPage()
-	tmpl := template.Must(template.New("layout").Parse(htmlLayout()))
-	if r.Method == http.MethodPost {
+		http.ServeFile(w, r, "tmp/index.html")
+	} else if r.Method == http.MethodPost {
 		r.ParseForm()
 		input := r.Form.Get("input")
-		s.Synthesize(input, s.filename)
-		tmpl.Execute(w, index)
+		c.Filename, _ = c.Synthesize(input, c.Filename)
+		http.ServeFile(w, r, "tmp/index.html")
 	} else {
 		http.Error(w, "Invalid method.", http.StatusMethodNotAllowed)
 	}

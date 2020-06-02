@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"text/template"
 	"time"
 
 	"github.com/ajagnic/voicer/voice"
@@ -13,7 +14,7 @@ import (
 
 type webClient struct {
 	*voice.VoiceClient
-	filename string
+	Filename string
 }
 
 func AuthenticateServer(key string) (*webClient, error) {
@@ -23,7 +24,7 @@ func AuthenticateServer(key string) (*webClient, error) {
 	}
 	client := &webClient{
 		voiceClient,
-		"output",
+		"tmp/output",
 	}
 	return client, err
 }
@@ -32,14 +33,14 @@ func (c *webClient) Serve(addr string) error {
 	router := http.NewServeMux()
 	server := createServer(addr, router)
 	interrupt := shutdownListener()
+	err := generateHTML(*c)
 
-	router.HandleFunc("/", indexHandler)
+	router.HandleFunc("/", c.indexHandler)
 	router.HandleFunc("/media/", mediaHandler)
-	router.HandleFunc("/post", c.postHandler)
 
 	go listen(server)
 	<-interrupt
-	err := shutdown(server)
+	err = shutdown(server, c.Filename)
 	return err
 }
 
@@ -50,7 +51,8 @@ func listen(srv *http.Server) {
 	}
 }
 
-func shutdown(srv *http.Server) error {
+func shutdown(srv *http.Server, file string) error {
+	os.RemoveAll("tmp")
 	timeout, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	err := srv.Shutdown(timeout)
@@ -69,4 +71,33 @@ func createServer(addr string, router *http.ServeMux) *http.Server {
 		Addr:    addr,
 		Handler: router,
 	}
+}
+
+func generateHTML(client webClient) error {
+	html := `
+	<!DOCTYPE html>
+	<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Voicer</title>
+	</head>
+	<body>
+		<audio autoplay controls>
+			<source src="media/{{.Filename}}.mp3" type="audio/mpeg">
+			<source src="media/{{.Filename}}.ogg" type="audio/ogg">
+			<source src="media/{{.Filename}}.wav" type="audio/wav">
+		</audio>
+		<form action="/post" method="post">
+			<textarea name="input" id="inputArea" cols="30" rows="10"></textarea>
+			<button type="submit">Convert</button>
+		</form>
+	</body>
+	</html>
+	`
+	err := os.Mkdir("tmp", 0755)
+	file, err := os.OpenFile("tmp/index.html", os.O_CREATE|os.O_WRONLY, 0644)
+	tmpl := template.Must(template.New("index").Parse(html))
+	err = tmpl.Execute(file, client)
+	return err
 }
