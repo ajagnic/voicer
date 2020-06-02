@@ -14,7 +14,8 @@ import (
 
 type webClient struct {
 	*voice.VoiceClient
-	Filename string
+	AudioFile string
+	htmlfile  string
 }
 
 func AuthenticateServer(key string) (*webClient, error) {
@@ -24,7 +25,8 @@ func AuthenticateServer(key string) (*webClient, error) {
 	}
 	client := &webClient{
 		voiceClient,
-		"tmp/output",
+		"output",
+		"index.html",
 	}
 	return client, err
 }
@@ -40,7 +42,7 @@ func (c *webClient) Serve(addr string) error {
 
 	go listen(server)
 	<-interrupt
-	err = shutdown(server, c.Filename)
+	err = shutdown(server, c)
 	return err
 }
 
@@ -51,11 +53,13 @@ func listen(srv *http.Server) {
 	}
 }
 
-func shutdown(srv *http.Server, file string) error {
-	os.RemoveAll("tmp")
+func shutdown(srv *http.Server, client *webClient) error {
 	timeout, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	err := srv.Shutdown(timeout)
+	os.Remove(client.AudioFile)
+	os.Remove(client.htmlfile)
+	client.Close()
 	log.Printf("Server shutdown.")
 	return err
 }
@@ -84,9 +88,9 @@ func generateHTML(client webClient) error {
 	</head>
 	<body>
 		<audio autoplay controls>
-			<source src="media/{{.Filename}}.mp3" type="audio/mpeg">
-			<source src="media/{{.Filename}}.ogg" type="audio/ogg">
-			<source src="media/{{.Filename}}.wav" type="audio/wav">
+			<source src="media/{{.AudioFile}}.mp3" type="audio/mpeg">
+			<source src="media/{{.AudioFile}}.ogg" type="audio/ogg">
+			<source src="media/{{.AudioFile}}.wav" type="audio/wav">
 		</audio>
 		<form action="/post" method="post">
 			<textarea name="input" id="inputArea" cols="30" rows="10"></textarea>
@@ -95,9 +99,8 @@ func generateHTML(client webClient) error {
 	</body>
 	</html>
 	`
-	err := os.Mkdir("tmp", 0755)
-	file, err := os.OpenFile("tmp/index.html", os.O_CREATE|os.O_WRONLY, 0644)
-	tmpl := template.Must(template.New("index").Parse(html))
+	file, err := os.OpenFile(client.htmlfile, os.O_CREATE|os.O_WRONLY, 0644)
+	tmpl := template.Must(template.New("interface").Parse(html))
 	err = tmpl.Execute(file, client)
 	return err
 }
