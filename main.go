@@ -15,5 +15,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Could not authenticate server. %v", err)
 	}
-	client.Serve(":8080")
+	err = client.Serve(":8080")
+	if err != nil {
+		log.Fatalf("Serve error. %v", err)
+	}
 }

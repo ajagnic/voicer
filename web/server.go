@@ -14,6 +14,7 @@ import (
 
 type webClient struct {
 	*voice.VoiceClient
+	UID       int
 	AudioFile string
 	htmlfile  string
 }
@@ -25,6 +26,7 @@ func AuthenticateServer(key string) (*webClient, error) {
 	}
 	client := &webClient{
 		voiceClient,
+		0,
 		"output",
 		"index.html",
 	}
@@ -38,6 +40,7 @@ func (c *webClient) Serve(addr string) error {
 	err := generateHTML(*c)
 
 	router.HandleFunc("/", c.indexHandler)
+	router.HandleFunc("/post", c.postHandler)
 	router.HandleFunc("/media/", mediaHandler)
 
 	go listen(server)
@@ -57,8 +60,8 @@ func shutdown(srv *http.Server, client *webClient) error {
 	timeout, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	err := srv.Shutdown(timeout)
-	os.Remove(client.AudioFile)
-	os.Remove(client.htmlfile)
+	err = os.Remove("*.mp3")
+	err = os.Remove(client.htmlfile)
 	client.Close()
 	log.Printf("Server shutdown.")
 	return err
@@ -88,9 +91,7 @@ func generateHTML(client webClient) error {
 	</head>
 	<body>
 		<audio autoplay controls>
-			<source src="media/{{.AudioFile}}.mp3" type="audio/mpeg">
-			<source src="media/{{.AudioFile}}.ogg" type="audio/ogg">
-			<source src="media/{{.AudioFile}}.wav" type="audio/wav">
+			<source src="media/{{.AudioFile}}">
 		</audio>
 		<form action="/post" method="post">
 			<textarea name="input" id="inputArea" cols="30" rows="10"></textarea>
@@ -102,5 +103,6 @@ func generateHTML(client webClient) error {
 	file, err := os.OpenFile(client.htmlfile, os.O_CREATE|os.O_WRONLY, 0644)
 	tmpl := template.Must(template.New("interface").Parse(html))
 	err = tmpl.Execute(file, client)
+	err = file.Close()
 	return err
 }
